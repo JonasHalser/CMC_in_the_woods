@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CMC Ticket Dashboard - Into the Woods</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+  <style>
+    :root {
+      --bg: #130d0b;
+      --panel: #201613;
+      --panel-2: #2a1d19;
+      --text: #fff5ee;
+      --muted: #d8b8a4;
+      --accent: #bc4117;
+      --accent-2: #09819c;
+      --accent-3: #ebba82;
+      --border: rgba(235, 186, 130, 0.14);
+      --shadow: 0 20px 60px rgba(0, 0, 0, 0.38);
+      --radius: 22px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(188, 65, 23, 0.20), transparent 28%),
+        radial-gradient(circle at top right, rgba(9, 129, 156, 0.18), transparent 24%),
+        radial-gradient(circle at bottom center, rgba(235, 186, 130, 0.10), transparent 30%),
+        linear-gradient(180deg, #120b09 0%, #18100d 100%);
+      color: var(--text);
+      padding: 24px;
+    }
+
+    .container { max-width: 1500px; margin: 0 auto; }
+    .header { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+    .title { font-size: 2rem; font-weight: 900; margin: 0; letter-spacing: -0.03em; }
+    .subtitle { color: var(--muted); margin-top: 6px; font-size: 0.98rem; }
+    .status { background: rgba(235, 186, 130, 0.08); border: 1px solid var(--border); padding: 10px 14px; border-radius: 999px; color: var(--accent-3); font-size: 0.92rem; backdrop-filter: blur(8px); }
+    .grid { display: grid; gap: 18px; }
+    .summary-grid { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-bottom: 24px; }
+    .cards { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-bottom: 24px; }
+    .panel, .card, .chart-card { background: linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.015)), linear-gradient(180deg, rgba(188,65,23,0.06), rgba(9,129,156,0.04)); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 22px; backdrop-filter: blur(10px); }
+    .summary-title, .card h2, .chart-header h2 { color: var(--accent-3); margin: 0 0 10px; font-size: 1rem; font-weight: 750; }
+    .summary-value, .value { font-size: 2.2rem; font-weight: 900; line-height: 1; letter-spacing: -0.04em; }
+    .value { font-size: 2.55rem; margin-bottom: 10px; }
+    .meta, .summary-meta, .footer-note { color: var(--muted); font-size: 0.92rem; line-height: 1.45; }
+    .progress-head { display: flex; justify-content: space-between; margin-bottom: 8px; color: var(--muted); font-size: 0.9rem; }
+    .progress { width: 100%; height: 14px; background: rgba(255,255,255,0.06); border-radius: 999px; overflow: hidden; border: 1px solid rgba(235,186,130,0.10); }
+    .progress-bar { height: 100%; width: 0%; border-radius: 999px; background: linear-gradient(90deg, var(--accent-2), var(--accent-3), var(--accent)); transition: width 0.5s ease; }
+    .chart-card { margin-top: 24px; }
+    .chart-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+    .chart-header h3 { margin: 0; font-size: 0.95rem; color: var(--muted); font-weight: 500; }
+    .chart-container { position: relative; height: 440px; }
+    .chart-container.small { height: 320px; }
+    .error { color: #ffb4a3; margin-top: 10px; font-size: 0.95rem; white-space: pre-wrap; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+    th, td { padding: 12px 14px; text-align: left; border-bottom: 1px solid rgba(235,186,130,0.10); }
+    th { color: var(--accent-3); font-weight: 700; position: sticky; top: 0; background: rgba(32,22,19,0.95); }
+    td { color: var(--muted); }
+    .table-number, .table-timestamp { color: var(--text); font-weight: 600; }
+    .table-wrap { overflow-x: auto; max-height: 520px; }
+    @media (max-width: 900px) { body { padding: 14px; } .chart-container { height: 340px; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1 class="title">CMC Ticket Dashboard</h1>
+        <div class="subtitle">CrazyMusicalCompany · Into the Woods - Ab in den Wald · Ticketverkäufe nach Termin</div>
+      </div>
+      <div class="status" id="lastUpdated">Lade Daten ...</div>
+    </div>
+
+    <div class="grid summary-grid">
+      <div class="panel">
+        <div class="summary-title">Gesamt verkauft</div>
+        <div class="summary-value" id="totalSold">--</div>
+        <div class="summary-meta" id="totalMeta">Warte auf Daten ...</div>
+      </div>
+      <div class="panel">
+        <div class="summary-title">Verkauft seit letztem Stand des Vortags</div>
+        <div class="summary-value" id="deltaTotal">--</div>
+        <div class="summary-meta" id="deltaMeta">Warte auf Daten ...</div>
+      </div>
+      <div class="panel">
+        <div class="summary-title">Ø Verkäufe pro Tag, letzte 7 Tagesdifferenzen</div>
+        <div class="summary-value" id="avg7dValue">--</div>
+        <div class="summary-meta" id="avg7dMeta">Warte auf Daten ...</div>
+      </div>
+      <div class="panel">
+        <div class="summary-title">Letzter Intervall-Peak</div>
+        <div class="summary-value" id="peakValue">--</div>
+        <div class="summary-meta" id="peakMeta">Warte auf Daten ...</div>
+      </div>
+    </div>
+
+    <div class="grid cards" id="cardsContainer"></div>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <h2>Zeitlicher Verlauf aller Termine</h2>
+          <h3>Automatisch aus data/ticket_history.csv geladen</h3>
+        </div>
+        <div class="status">Auto-Refresh jede Stunde</div>
+      </div>
+      <div class="chart-container"><canvas id="historyChart"></canvas></div>
+      <div class="footer-note" id="latestTimestamp">Letzter Datensatz: --</div>
+      <div class="error" id="errorBox"></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <h2>Wochenverkaufszahlen nach Kalenderwoche</h2>
+          <h3>Basis: letzter Stand je Kalendertag</h3>
+        </div>
+      </div>
+      <div class="chart-container small"><canvas id="weeklySalesChart"></canvas></div>
+      <div class="footer-note" id="weeklySalesNote">KW-Auswertung: --</div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <h2>Alle CSV-Daten</h2>
+        <div class="status" id="tableRowCount">0 Einträge</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr id="dataTableHead"></tr></thead>
+          <tbody id="dataTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const CSV_URL = "data/ticket_history.csv";
+    const MAX_TICKETS = 570;
+    const REFRESH_MS = 3600000;
+    const PEAK_THRESHOLD = 10;
+    const SERIES_NAMES = ["12.02", "13.02", "14.02", "19.02", "20.02", "21.02", "28.03", "29.03", "02.04", "03.04"];
+    const CHART_COLORS = ["#bc4117", "#09819c", "#ebba82", "#d96a3b", "#4fb3c8", "#9b5de5", "#f15bb5", "#00bbf9", "#fee440", "#00f5d4"];
+
+    let chart = null;
+    let weeklyChart = null;
+
+    function detectDelimiter(line) {
+      return (line.match(/;/g) || []).length > (line.match(/,/g) || []).length ? ";" : ",";
+    }
+
+    function parseDateTime(timestamp) {
+      const normalized = String(timestamp).trim().includes("T") ? String(timestamp).trim() : String(timestamp).trim().replace(" ", "T");
+      const date = new Date(normalized);
+      return Number.isNaN(date.getTime()) ? null : date;
+    }
+
+    function formatDateTime(timestamp) {
+      const date = parseDateTime(timestamp);
+      if (!date) return timestamp;
+      return date.toLocaleString("de-DE", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+    }
+
+    function parseCSV(text) {
+      const lines = text.trim().split(/\r?\n/).filter(Boolean);
+      if (lines.length < 2) return [];
+      const delimiter = detectDelimiter(lines[0]);
+      const rows = lines.map(line => line.split(delimiter).map(v => v.trim()));
+      return rows.slice(1).map(row => {
+        const timestamp = row[0];
+        const parsedDate = parseDateTime(timestamp);
+        const values = row.slice(1).map(v => {
+          const num = Number(String(v).replace(",", ".").replace(/[^0-9.-]/g, ""));
+          return Number.isNaN(num) ? null : num;
+        });
+        return { timestamp, parsedDate, values };
+      }).filter(row => row.parsedDate && row.values.length === SERIES_NAMES.length).sort((a, b) => a.parsedDate - b.parsedDate);
+    }
+
+    function formatDayKey(date) {
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    }
+
+    function previousDayKey(dayKey) {
+      const [y, m, d] = dayKey.split("-").map(Number);
+      const date = new Date(y, m - 1, d);
+      date.setDate(date.getDate() - 1);
+      return formatDayKey(date);
+    }
+
+    function getRawTotal(row) {
+      return row.values.reduce((sum, value) => sum + Math.max(0, value ?? 0), 0);
+    }
+
+    function getLatestRowPerDay(rows) {
+      const map = new Map();
+      rows.forEach(row => map.set(formatDayKey(row.parsedDate), row));
+      return Array.from(map.values()).sort((a, b) => a.parsedDate - b.parsedDate);
+    }
+
+    function getPreviousDayLatestRow(rows) {
+      const latest = rows[rows.length - 1];
+      const key = previousDayKey(formatDayKey(latest.parsedDate));
+      const matches = rows.filter(row => formatDayKey(row.parsedDate) === key);
+      return matches.length ? matches[matches.length - 1] : null;
+    }
+
+    function getISOWeekInfo(date) {
+      const tempDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+      const dayNum = tempDate.getUTCDay() || 7;
+      tempDate.setUTCDate(tempDate.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(tempDate.getUTCFullYear(), 0, 1));
+      const week = Math.ceil((((tempDate - yearStart) / 86400000) + 1) / 7);
+      return { year: tempDate.getUTCFullYear(), week };
+    }
+
+    function getWeeklySalesData(rows) {
+      const daily = getLatestRowPerDay(rows);
+      const weekly = new Map();
+      for (let i = 1; i < daily.length; i++) {
+        const delta = getRawTotal(daily[i]) - getRawTotal(daily[i - 1]);
+        const { year, week } = getISOWeekInfo(daily[i].parsedDate);
+        const key = `${year}-KW${String(week).padStart(2, "0")}`;
+        if (!weekly.has(key)) weekly.set(key, { label: `KW ${String(week).padStart(2, "0")} / ${year}`, totalSales: 0 });
+        weekly.get(key).totalSales += delta;
+      }
+      return Array.from(weekly.values());
+    }
+
+    function updateSummaries(rows) {
+      const latest = rows[rows.length - 1];
+      const previousDay = getPreviousDayLatestRow(rows);
+      const total = getRawTotal(latest);
+      const capacity = MAX_TICKETS * SERIES_NAMES.length;
+      const percent = capacity ? (total / capacity) * 100 : 0;
+      document.getElementById("totalSold").textContent = total.toLocaleString("de-DE");
+      document.getElementById("totalMeta").innerHTML = `${percent.toFixed(1)}% Auslastung gesamt<br>${capacity.toLocaleString("de-DE")} Plätze Gesamtkapazität`;
+
+      if (previousDay) {
+        const delta = total - getRawTotal(previousDay);
+        document.getElementById("deltaTotal").textContent = `${delta > 0 ? "+" : ""}${delta.toLocaleString("de-DE")}`;
+        document.getElementById("deltaMeta").innerHTML = `${formatDateTime(previousDay.timestamp)} → ${formatDateTime(latest.timestamp)}`;
+      } else {
+        document.getElementById("deltaTotal").textContent = "--";
+        document.getElementById("deltaMeta").textContent = "Noch kein Vortagswert vorhanden.";
+      }
+
+      const daily = getLatestRowPerDay(rows);
+      const deltas = [];
+      for (let i = 1; i < daily.length; i++) deltas.push(getRawTotal(daily[i]) - getRawTotal(daily[i - 1]));
+      const last7 = deltas.slice(-7);
+      if (last7.length) {
+        const avg = last7.reduce((a, b) => a + b, 0) / last7.length;
+        document.getElementById("avg7dValue").textContent = avg.toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+        document.getElementById("avg7dMeta").textContent = `Berechnet aus ${last7.length} Tagesdifferenzen.`;
+      } else {
+        document.getElementById("avg7dValue").textContent = "--";
+        document.getElementById("avg7dMeta").textContent = "Mindestens zwei Tagesstände nötig.";
+      }
+
+      if (rows.length >= 2) {
+        const prev = rows[rows.length - 2];
+        const intervalDelta = total - getRawTotal(prev);
+        document.getElementById("peakValue").textContent = `${intervalDelta > 0 ? "+" : ""}${intervalDelta.toLocaleString("de-DE")}`;
+        document.getElementById("peakMeta").textContent = intervalDelta >= PEAK_THRESHOLD ? "Verkaufspeak erkannt." : "Kein Peak im letzten Intervall.";
+      }
+    }
+
+    function renderCards(latest, previousDay) {
+      const container = document.getElementById("cardsContainer");
+      container.innerHTML = "";
+      latest.values.forEach((value, i) => {
+        const safe = Math.max(0, value ?? 0);
+        const percent = Math.max(0, Math.min(100, (safe / MAX_TICKETS) * 100));
+        const remaining = Math.max(0, MAX_TICKETS - safe);
+        let delta = "--";
+        if (previousDay && previousDay.values[i] != null) {
+          const d = safe - Math.max(0, previousDay.values[i] ?? 0);
+          delta = `${d > 0 ? "+" : ""}${d.toLocaleString("de-DE")}`;
+        }
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
+          <h2>Termin ${SERIES_NAMES[i]}</h2>
+          <div class="value">${safe.toLocaleString("de-DE")}</div>
+          <div class="meta">Seit Vortag: ${delta}</div>
+          <div class="meta" style="display:flex; justify-content:space-between;"><span>${remaining.toLocaleString("de-DE")} frei</span><span>max. ${MAX_TICKETS.toLocaleString("de-DE")}</span></div>
+          <div class="progress-head"><span>Auslastung</span><span>${percent.toFixed(1)}%</span></div>
+          <div class="progress"><div class="progress-bar" style="width:${percent}%"></div></div>`;
+        container.appendChild(card);
+      });
+    }
+
+    function createOrUpdateChart(rows) {
+      const datasets = SERIES_NAMES.map((name, i) => ({
+        label: `Termin ${name}`,
+        data: rows.map(r => ({ x: r.parsedDate, y: Math.max(0, r.values[i] ?? 0) })),
+        tension: 0.25,
+        borderWidth: 3,
+        borderColor: CHART_COLORS[i % CHART_COLORS.length],
+        backgroundColor: CHART_COLORS[i % CHART_COLORS.length],
+        pointRadius: 0,
+        pointHoverRadius: 5,
+        fill: false,
+        yAxisID: "y"
+      }));
+      datasets.push({
+        label: "Gesamt kumuliert",
+        data: rows.map(r => ({ x: r.parsedDate, y: getRawTotal(r) })),
+        tension: 0.25,
+        borderWidth: 4,
+        borderColor: "#ffffff",
+        backgroundColor: "#ffffff",
+        borderDash: [8, 6],
+        pointRadius: 0,
+        pointHoverRadius: 5,
+        fill: false,
+        yAxisID: "y1"
+      });
+
+      const ctx = document.getElementById("historyChart").getContext("2d");
+      if (chart) { chart.data.datasets = datasets; chart.update(); return; }
+      chart = new Chart(ctx, {
+        type: "line",
+        data: { datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: "nearest", intersect: false },
+          plugins: { legend: { labels: { color: "#fff5ee", usePointStyle: true } } },
+          scales: {
+            x: { type: "time", time: { unit: "day", tooltipFormat: "dd.MM.yyyy HH:mm", displayFormats: { day: "dd.MM." } }, ticks: { color: "#d8b8a4" }, grid: { color: "rgba(235,186,130,0.08)" } },
+            y: { beginAtZero: true, suggestedMax: MAX_TICKETS, ticks: { color: "#d8b8a4" }, grid: { color: "rgba(235,186,130,0.10)" }, title: { display: true, text: "Tickets je Termin", color: "#d8b8a4" } },
+            y1: { position: "right", beginAtZero: true, suggestedMax: MAX_TICKETS * SERIES_NAMES.length, ticks: { color: "#ffffff" }, grid: { drawOnChartArea: false }, title: { display: true, text: "Gesamt kumuliert", color: "#ffffff" } }
+          }
+        }
+      });
+    }
+
+    function createOrUpdateWeeklySalesChart(rows) {
+      const data = getWeeklySalesData(rows);
+      document.getElementById("weeklySalesNote").textContent = data.length ? `Ausgewertet: ${data.length} Kalenderwochen.` : "Nicht genügend Tagesstände vorhanden.";
+      const ctx = document.getElementById("weeklySalesChart").getContext("2d");
+      if (weeklyChart) { weeklyChart.data.labels = data.map(d => d.label); weeklyChart.data.datasets[0].data = data.map(d => d.totalSales); weeklyChart.update(); return; }
+      weeklyChart = new Chart(ctx, {
+        type: "bar",
+        data: { labels: data.map(d => d.label), datasets: [{ label: "Verkaufte Tickets je KW", data: data.map(d => d.totalSales), borderWidth: 1, borderRadius: 8, backgroundColor: "rgba(9,129,156,0.75)", borderColor: "#ebba82" }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: "#fff5ee" } } }, scales: { x: { ticks: { color: "#d8b8a4" } }, y: { beginAtZero: true, ticks: { color: "#d8b8a4" } } } }
+      });
+    }
+
+    function renderDataTable(rows) {
+      document.getElementById("dataTableHead").innerHTML = ["Zeitpunkt", ...SERIES_NAMES].map(h => `<th>${h}</th>`).join("");
+      document.getElementById("dataTableBody").innerHTML = [...rows].reverse().map(row => `<tr><td class="table-timestamp">${formatDateTime(row.timestamp)}</td>${row.values.map(v => `<td class="table-number">${Math.max(0, v ?? 0).toLocaleString("de-DE")}</td>`).join("")}</tr>`).join("");
+      document.getElementById("tableRowCount").textContent = `${rows.length.toLocaleString("de-DE")} Einträge`;
+    }
+
+    async function loadDashboard() {
+      const errorBox = document.getElementById("errorBox");
+      try {
+        const res = await fetch(`${CSV_URL}?t=${Date.now()}`, { cache: "no-store" });
+        if (!res.ok) throw new Error(`HTTP ${res.status} beim Laden von ${CSV_URL}. Starte zuerst die GitHub Action, damit die CSV erzeugt wird.`);
+        const rows = parseCSV(await res.text());
+        if (!rows.length) throw new Error("Keine gültigen CSV-Daten gefunden.");
+        const latest = rows[rows.length - 1];
+        const previousDay = getPreviousDayLatestRow(rows);
+        updateSummaries(rows);
+        renderCards(latest, previousDay);
+        createOrUpdateChart(rows);
+        createOrUpdateWeeklySalesChart(rows);
+        renderDataTable(rows);
+        document.getElementById("latestTimestamp").textContent = `Letzter Datensatz: ${formatDateTime(latest.timestamp)}`;
+        document.getElementById("lastUpdated").textContent = `Aktualisiert: ${new Date().toLocaleString("de-DE", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}`;
+        errorBox.textContent = "";
+      } catch (err) {
+        console.error(err);
+        document.getElementById("lastUpdated").textContent = "Fehler beim Laden";
+        errorBox.textContent = err.message;
+      }
+    }
+
+    loadDashboard();
+    setInterval(loadDashboard, REFRESH_MS);
+  </script>
+</body>
+</html>
