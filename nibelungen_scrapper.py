@@ -9,16 +9,16 @@ import requests
 # Schreibt bei jedem Lauf eine neue Zeile in data/ticket_history.csv.
 
 APPOINTMENTS = [
-    ("12.02", "https://okticket.de/tickets-musical-into-the-woods-ab-in-den-wald-straubing-theater-am-hagen-2027-02-12-e58398"),
-    ("13.02", "https://okticket.de/tickets-musical-into-the-woods-ab-in-den-wald-straubing-theater-am-hagen-2027-02-13-e58399"),
-    ("14.02", "https://okticket.de/tickets-musical-into-the-woods-ab-in-den-wald-straubing-theater-am-hagen-2027-02-14-e58400"),
-    ("19.02", "https://okticket.de/tickets-musical-into-the-woods-ab-in-den-wald-straubing-theater-am-hagen-2027-02-19-e58401"),
-    ("20.02", "https://okticket.de/tickets-musical-into-the-woods-ab-in-den-wald-straubing-theater-am-hagen-2027-02-20-e58402"),
-    ("21.02", "https://okticket.de/tickets-musical-into-the-woods-ab-in-den-wald-straubing-theater-am-hagen-2027-02-21-e58403"),
-    ("28.03", "https://okticket.de/tickets-musical-into-the-woods-ab-in-den-wald-straubing-theater-am-hagen-2027-03-28-e58404"),
-    ("29.03", "https://okticket.de/tickets-musical-into-the-woods-ab-in-den-wald-straubing-theater-am-hagen-2027-03-29-e58405"),
-    ("02.04", "https://okticket.de/tickets-musical-into-the-woods-ab-in-den-wald-straubing-theater-am-hagen-2027-04-02-e58406"),
-    ("03.04", "https://okticket.de/tickets-musical-into-the-woods-ab-in-den-wald-straubing-theater-am-hagen-2027-04-03-e58407"),
+    ("12.02", "https://okticket.de/index.php?event_id=58398&pmp_id=44831"),
+    ("13.02", "https://okticket.de/index.php?event_id=58399&pmp_id=44832"),
+    ("14.02", "https://okticket.de/index.php?event_id=58400&pmp_id=44833"),
+    ("19.02", "https://okticket.de/index.php?event_id=58401&pmp_id=44834"),
+    ("20.02", "https://okticket.de/index.php?event_id=58402&pmp_id=44835"),
+    ("21.02", "https://okticket.de/index.php?event_id=58403&pmp_id=44836"),
+    ("28.03", "https://okticket.de/index.php?event_id=58404&pmp_id=44837"),
+    ("29.03", "https://okticket.de/index.php?event_id=58405&pmp_id=44838"),
+    ("02.04", "https://okticket.de/index.php?event_id=58406&pmp_id=44839"),
+    ("03.04", "https://okticket.de/index.php?event_id=58407&pmp_id=44840"),
 ]
 
 CSV_FILE = Path("data/ticket_history.csv")
