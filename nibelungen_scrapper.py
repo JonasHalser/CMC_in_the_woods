@@ -24,19 +24,20 @@ APPOINTMENTS = [
 CSV_FILE = Path("data/ticket_history.csv")
 
 
-def count_occupied(url: str) -> int:
-    """Zählt belegte Plätze anhand des okticket-HTMLs."""
-    headers = {
-        "User-Agent": "Mozilla/5.0 (compatible; CMC-Ticket-Dashboard/1.0)",
-        "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
-    }
+def count_occupied(url):
     try:
-        response = requests.get(url, headers=headers, timeout=20)
-        response.raise_for_status()
-        html = response.text.lower()
-        return html.count("occupied")
-    except Exception as exc:
-        print(f"Fehler bei {url}: {exc}")
+        headers = {"User-Agent": "Mozilla/5.0"}
+        r = requests.get(url, headers=headers, timeout=15)
+        r.raise_for_status()
+
+        html = r.text.lower()
+
+        occupied = html.count("occupied")
+        sperr = html.count("sperr")
+
+        return max(0, occupied + sperr - 1)
+
+    except Exception:
         return -1
 
 
